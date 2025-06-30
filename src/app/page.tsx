@@ -12,20 +12,23 @@ export default function Home() {
   const [image, setImage] = useState<File | null>(null);
 
   const handleSend = async () => {
-    if (input.trim() !== "") {
-      setMessages([...messages, { type: "user", text: input }]);
+    if (input.trim() !== "" || image) {
+      const formData = new FormData();
+      formData.append("message", input);
+      if (image) {
+        formData.append("image", image);
+      }
   
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input }),
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        body: formData,
       });
   
       const data = await response.json();
       setMessages((prev) => [...prev, { type: "assistant", text: data.reply }]);
   
       setInput("");
+      setImage(null);
     }
   };
 
