@@ -10,6 +10,16 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [image, setImage] = useState<File | null>(null);
+  const [listening, setListening] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const speakText = (text: string) => {
+    if (!isMuted && 'speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }
+  };
 
   const handleSend = async () => {
     if (input.trim() !== "" || image) {
@@ -26,6 +36,7 @@ export default function Home() {
   
       const data = await response.json();
       setMessages((prev) => [...prev, { type: "assistant", text: data.reply }]);
+      speakText(data.reply);
   
       setInput("");
       setImage(null);
@@ -39,6 +50,42 @@ export default function Home() {
       setMessages([...messages, { type: "user", text: "[Image Uploaded]" }]);
     }
   };
+
+  const handleSpeechRecognition = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+  
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+  
+    recognition.onstart = () => setListening(true);
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setListening(false);
+    };
+    recognition.onend = () => setListening(false);
+  
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0].transcript)
+        .join('');
+      setInput(transcript);
+    };
+  
+    if (!listening) {
+      recognition.start();
+    } else {
+      recognition.stop();
+    }
+  };
+  
+
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4">
@@ -65,6 +112,18 @@ export default function Home() {
           className="bg-blue-500 text-white px-4 py-2 rounded"
         >
           Send
+        </button>
+        <button
+          onClick={handleSpeechRecognition}
+          className={`px-4 py-2 rounded ${listening ? 'bg-red-500' : 'bg-green-500'} text-white`}
+        >
+          {listening ? 'Stop Listening' : 'Start Speaking'}
+        </button>
+        <button
+          onClick={() => setIsMuted(!isMuted)}
+          className="bg-gray-500 text-white px-2 py-1 rounded"
+        >
+          {isMuted ? "🔇 Unmute" : "🔊 Mute"}
         </button>
         <input type="file" accept="image/*" onChange={handleImageUpload} />
       </div>
